@@ -1926,8 +1926,6 @@ loc_1A56:
 
 ; THE STUFF IS HERE just cuase.
 
-	include "s2b_exvars.asm"
-
 
 ; ---------------------------------------------------------------------------
 ; KOSINSKI DECOMPRESSION PROCEDURE
@@ -4351,7 +4349,7 @@ Unused_Code4_Loop: ; loc_4122:
 ; ---------------------------------------------------------------------------
 ; byte_4140:
 MusicList:	zoneOrderedTable 1,1
-	zoneTableEntry.b	MusID_GHZ	; GHZ
+	zoneTableEntry.b	MusIDFinal_SCZ	; GHZ
 	zoneTableEntry.b	MusID_GHZ	; OWZ
 	zoneTableEntry.b	MusID_MTZ	; WZ
 	zoneTableEntry.b	MusID_SSZ	; SSZ
@@ -13399,7 +13397,7 @@ Monitor_SonicLife: ; loc_B50C:
 Monitor_TailsLife: ; loc_B51E:
 		addq.b  #$01, (Life_count).w
 		addq.b  #$01, (Update_HUD_lives).w
-		move.w  #MusID_ExtraLife, D0
+		move.w  #MusIDFinal_WFZ, D0
 		jmp     (PlayMusic).l            ; loc_14C0
 Monitor_Rings: ; loc_B530:
 		addi.w  #$000A, (Ring_count).w
@@ -19438,6 +19436,7 @@ loc_FEE2:
 ; ---------------------------------------------------------------------------
 ; loc_FEEC: Sonic_MdNormal:
 Obj01_MdNormal:
+		bsr.w	Sonic_RespectSetFlags
 		bsr.w	Sonic_CheckSpindash
 		bsr.w	Sonic_Jump
 		bsr.w	Sonic_SlopeResist
@@ -19710,14 +19709,13 @@ loc_10132:
 		move.b	#1,$1D(a0)	; force walking animation to restart if it's already in-progress
 
 loc_10146:
-		sub.w	d5,d0		; add acceleration to the left
 		move.w	d6,d1
 		neg.w	d1
+		cmp.w	d1,d0		; compare current speed with top speed
+		ble.s	loc_10158	; if speed is already greater than the maximum, branch
+		sub.w	d5,d0		; add acceleration to the left
 		cmp.w	d1,d0		; compare new speed with top speed
-		bgt.s	loc_10158	; if new speed is less than the maximum, branch
-		add.w	d5,d0		; remove this frame's acceleration change
-		cmp.w	d1,d0		; compare speed with top speed
-		ble.s	loc_10158	; if speed was already greater than the maximum, branch
+		ble.s	loc_10158	; if new speed is less than or equal to the maximum, branch
 		move.w	d1,d0		; limit speed on ground going left
 
 loc_10158:
@@ -19761,12 +19759,11 @@ Sonic_MoveRight:
 		move.b	#1,$1D(a0)	; force walking animation to restart if it's already in-progress
 
 loc_101B6:
+		cmp.w	d6,d0		; compare current speed with top speed
+		bge.s	loc_101C4	; if speed is already greater than or equal to the maximum, branch
 		add.w	d5,d0		; add acceleration to the right
 		cmp.w	d6,d0		; compare new speed with top speed
 		blt.s	loc_101C4	; if new speed is less than the maximum, branch
-		sub.w	d5,d0		; remove this frame's acceleration change
-		cmp.w	d6,d0		; compare speed with top speed
-		bge.s	loc_101C4	; if speed was already greater than the maximum, branch
 		move.w	d6,d0		; limit speed on ground going right
 
 loc_101C4:
@@ -19939,7 +19936,7 @@ Sonic_ChgJumpDir:
 		move.w	(Sonic_acceleration).w,d5
 		asl.w	#1,d5
 		btst	#4,$22(a0)		; did Sonic jump from rolling?
-		bne.s	Obj01_Jump_ResetScr	; if yes, branch to skip midair control
+		;bne.s	Obj01_Jump_ResetScr	; if yes, branch to skip midair control
 		move.w	$10(a0),d0
 		btst	#2,(Ctrl_1_Held_Logical).w
 		beq.s	+	; if not holding left, branch
@@ -19950,7 +19947,7 @@ Sonic_ChgJumpDir:
 		neg.w	d1
 		cmp.w	d1,d0	; compare new speed with top speed
 		bgt.s	+	; if new speed is less than the maximum, branch
-		move.w	d1,d0	; limit speed in air going left, even if Sonic was already going faster (speed limit/cap)
+		nop;move.w	d1,d0	; limit speed in air going left, even if Sonic was already going faster (speed limit/cap)
 +
 		btst	#3,(Ctrl_1_Held_Logical).w
 		beq.s	+	; if not holding right, branch
@@ -19959,7 +19956,7 @@ Sonic_ChgJumpDir:
 		add.w	d5,d0	; accelerate right in the air
 		cmp.w	d6,d0	; compare new speed to top speed
 		blt.s	+	; if new speed is less than maximum, branch
-		move.w	d6,d0	; limit speed in air going right, even if Sonic was already going faster (speed limit/cap)
+		nop;move.w	d6,d0	; limit speed in air going right, even if Sonic was already going faster (speed limit/cap)
 ; Obj01_JumpMove:
 +		move.w	d0,$10(a0)
 
@@ -20203,9 +20200,39 @@ Sonic_UpVelCap:
 		move.w	#-$FC0,$12(a0)	; cap upward speed
 
 return_1055E:
+return_rts:
 		rts
 ; End of subroutine Sonic_JumpHeight
 		  
+;subroutine.
+;called every frame sonic is on the ground
+Sonic_RespectSetFlags:
+	;first check if drop dash flag is set
+	move.b (sg_dropdash_flag),d0
+	bne.s dropdashfunc
+	rts
+dropdashfunc:
+	move.b #0,(sg_dropdash_flag)
+	;check if we're still holding any buttons
+	move.b (Ctrl_1_Held_Logical).w,d0
+	andi.b	#$70,d0
+	beq.s Sonic_RespectSetFlags ; just loop back LOL
+	; do stuff on dropdash here
+	
+	move.b	#$E,$16(a0) ; v
+	move.b	#7,$17(a0) ;other jump anim stuff
+	move.b	#2,$1C(a0) ; idk
+	addq.w	#5,$C(a0) ; ??
+	move.w	#$2000,(Horiz_scroll_delay_val).w
+	move.w	#$900,$14(a0) ;sonic movement on the X axis
+	btst	#0,$22(a0) ;i guess reverse it if hes facing left
+	beq.s	dropdashfunc_reverse
+	neg.w	$14(a0)
+	rts
+dropdashfunc_reverse:
+	bset	#2,$22(a0)
+	rts
+
 ; ---------------------------------------------------------------------------
 ; Subroutine to check for starting to charge a spindash
 ; ---------------------------------------------------------------------------
@@ -20214,15 +20241,15 @@ return_1055E:
 
 ; loc_10560: Sonic_Spindash:
 Sonic_CheckSpindash:
+
+
+
 		tst.b	$39(a0) ; already charging?
 		bne.s	Sonic_UpdateSpindash
 		cmpi.b	#8,$1C(a0) ; this prevents spindash 
 		bne.s	return_10592
 
-		;first check if drop dash flag is set
-		move.b sg_dropdash_flag,d0
-		move.w d0,(Current_ZoneAndAct).w ;for debug purposes
-		bne.s sonic_spindashhelper900
+
 
 		move.b	(Ctrl_1_Press_Logical).w,d0
 		andi.b	#$70,d0 ;pressing a
@@ -20246,16 +20273,15 @@ Sonic_UpdateSpindash:
 Sonic_SpindashZoomy:
 		;this shit is sutpid.
 		; let go of spindash so we zoom
-		move.b 	#0,(sg_dropdash_flag)
 
-		move.b	#$E,$16(a0)
-		move.b	#7,$17(a0)
-		move.b	#2,$1C(a0)
-		addq.w	#5,$C(a0)
-		move.b	#0,$39(a0)
+		move.b	#$E,$16(a0) ; v
+		move.b	#7,$17(a0) ;other jump anim stuff
+		move.b	#2,$1C(a0) ;use jump animation
+		addq.w	#5,$C(a0) ; ??
+		move.b	#0,$39(a0) ;seems to be a spindash flag
 		move.w	#$2000,(Horiz_scroll_delay_val).w
-		move.w	#$800,$14(a0)
-		btst	#0,$22(a0)
+		move.w	#$1000,$14(a0) ;sonic movement on the X axis
+		btst	#0,$22(a0) ;i guess reverse it if hes facing left
 		beq.s	loc_105D2
 		neg.w	$14(a0)
 		
@@ -20394,11 +20420,13 @@ loc_1069A:
 
 ; loc_106A0:
 Sonic_JumpAngle:
+
+		jmp loc_106B0 ;disabled LOL
 		move.b	$26(a0),d0	; get Sonic's angle
 		beq.s	Sonic_JumpFlip	; if already 0, branch
-		bpl.s	loc_106B0	; if higher than 0, branch
+		bmi.s	loc_106B0	; if higher than 0, branch
 
-		addq.b	#2,d0		; increase angle
+		addq.b	#8,d0		; increase angle
 		bcc.s	BranchTo_Sonic_JumpAngleSet
 		moveq	#0,d0
 ; loc_106AE:
@@ -20407,7 +20435,7 @@ BranchTo_Sonic_JumpAngleSet:
 ; ===========================================================================
 
 loc_106B0:
-		subq.b	#2,d0		; decrease angle
+		subq.b	#8,d0		; decrease angle
 		bcc.s	Sonic_JumpAngleSet
 		moveq	#0,d0
 ; loc_106B6:
@@ -20680,9 +20708,11 @@ return_1090A:
 ; loc_1090C:
 Sonic_ResetOnFloor:
 		;what the fuck does this mean
+		andi.b	#$70,(Ctrl_1_Held)		; is A, B or C pressed?
+		bne.w loc_setupdropdash
+loc_resetonfloorstuff:
 		btst	#4,$22(a0)
 		beq.s	loc_1091A
-
 loc_1091A:
 		bclr	#5,$22(a0)
 		bclr	#1,$22(a0)
@@ -20700,12 +20730,12 @@ loc_10950:
 		move.w	#0,(Chain_Bonus_counter).w
 		move.b	#0,$27(a0)
 		move.b	#0,$29(a0)
-		btst #1,(Ctrl_1_Held).w
-		beq.s loc_setupdropdash
+
 		rts
 loc_setupdropdash:
 		move.b #1,(sg_dropdash_flag)
-		rts
+
+		jmp loc_resetonfloorstuff
 
 ; End of function Sonic_ResetOnFloor
 

@@ -270,6 +270,27 @@ S1MusID_Boss =		MusID_FinalBoss
 S1MusID_ActClear =	MusID_Boss
 S1MusID_Emerald =	MusID_BOZ
 
+MusIDFinal_CNZ2P = MusID_OOZ
+MusIDFinal_EHZ = MusID_GHZ
+MusIDFinal_MTZ = MusID_MTZ
+MusIDFinal_CNZ = MusID_CNZ
+MusIDFinal_MCZ = MusID_DHZ
+MusIDFinal_MCZ2P = MusID_HPZ
+MusIDFinal_ARZ = MusID_NGHZ
+MusIDFinal_DEZ = MusID_DEZ
+MusIDFinal_SSZ = MusID_SSZ
+MusIDFinal_LS = MusID_LevelSel
+MusIDFinal_FinalBoss = MusID_FinalBoss
+MusIDFinal_CPZ = MusID_CPZ
+MusIDFinal_Boss = MusID_Boss
+MusIDFinal_SCZ = MusID_RWZ
+MusIDFinal_OOZ = MusID_SSZ
+MusIDFinal_WFZ = MusID_Unused1
+MusIDFinal_EHZ2P = MusID_BOZ
+MusIDFinal_HTZ = MusID_HTZ
+
+
+
 ; Other sizes
 palette_line_size =	$10*2	; 16 word entries
 
@@ -461,7 +482,12 @@ Camera_Difference_P2_End:
 
 Screen_Shaking_Flag_HTZ:	ds.b	1	; activates screen shaking code in HTZ's layer deformation routine
 Screen_Shaking_Flag:		ds.b	1	; activates screen shaking code (if existent) in layer deformation routine
-				ds.b	2	; $FFFFEEBE-$FFFFEEBF ; unused
+
+; !! exvar
+sg_dropdash_flag: 
+    ds.b 1
+				ds.b	1	; $FFFFEEBE-$FFFFEEBF ; unused
+
 unk_EEC0:			ds.l	1	; unused, except on write in LevelSizeLoad...
 unk_EEC4:			ds.w	1	; same as above. The write being a long also overwrites the address below
 Camera_Max_Y_pos:		ds.w	1
@@ -903,6 +929,8 @@ Ending_demo_number:		ds.w	1 ; zone for the ending demos (2 bytes, unused)
 Graphics_Flags:			ds.w	1 ; misc. bitfield
 Debug_mode_flag:		ds.w	1 ; (2 bytes)
 Checksum_fourcc:		ds.l	1 ; (4 bytes)
+
+
 
 CrossResetRAM_End:
 

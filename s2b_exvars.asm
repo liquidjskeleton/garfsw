@@ -1,8 +1,1 @@
-; motherfuckers
-sg_dropdash_flag: 
-    ds.b 1
-    ds.b 1
-    ds.b 1
-    ds.b 1
-    ds.w 1
-    ds.w 1
+; line 907 of s2b.constants.asm
